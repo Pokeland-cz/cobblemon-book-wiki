@@ -29,7 +29,7 @@ public class OverviewPage {
         page.append(formatTypes(formData));
         page.append(formatBaseStats(formData));
         page.append(formatTraining(formData));
-        page.append(formatBreeding(formData, species));
+        // page.append(formatBreeding(formData, species));
         page.append(formatAbilities(formData));
 
 
