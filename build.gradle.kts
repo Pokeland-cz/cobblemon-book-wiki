@@ -10,7 +10,7 @@ version = "1.0.0"
 var minecraft_version = "1.21.1"
 var loader_version = "0.16.14"
 var fabric_version = "0.116.0+1.21.1"
-var cobblemon_version = "1.6.1+1.21.1"
+var cobblemon_version = "c1ce5491"
 
 architectury {
     platformSetupLoomIde()
@@ -31,6 +31,7 @@ repositories {
     maven("https://maven.impactdev.net/repository/development/")
     maven("https://oss.sonatype.org/content/repositories/snapshots")
     maven("https://maven.nucleoid.xyz")
+    maven("https://jitpack.io")
 }
 
 dependencies {
@@ -42,7 +43,8 @@ dependencies {
     modImplementation(fabricApi.module("fabric-command-api-v2", "${fabric_version}"))
 
     modImplementation("net.fabricmc:fabric-language-kotlin:1.12.3+kotlin.2.0.21")
-    modImplementation("com.cobblemon:fabric:${cobblemon_version}")
+    // Cobblemon from GitLab via JitPack
+    modImplementation("com.gitlab.aglarcz.cobblemon:fabric:c1ce5491")
 
     modImplementation("eu.pb4:sgui:1.6.1+1.21.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
