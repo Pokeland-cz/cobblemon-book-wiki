@@ -11,13 +11,16 @@ import com.cobblemon.mod.common.pokemon.evolution.variants.LevelUpEvolution;
 import com.cobblemon.mod.common.pokemon.evolution.variants.TradeEvolution;
 import com.cobblemon.mod.common.registry.BlockIdentifierCondition;
 import com.cobblemon.mod.common.registry.BlockTagCondition;
-import com.cobblemon.mod.common.registry.ItemIdentifierCondition;
-import com.cobblemon.mod.common.registry.ItemTagCondition;
 import net.ajsdev.cobblemonbookwiki.book.WikiBookBuilder;
 import net.ajsdev.cobblemonbookwiki.util.EvolutionRequirementUtil;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.*;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 
@@ -69,22 +72,34 @@ public class EvolutionPage {
 
                 case ItemInteractionEvolution iie: {
                     hover.append("Use Item Evolution\n");
-                    RegistryLikeCondition<Item> cond = iie.getRequiredContext().getItem();
+                    HolderSet<Item> cond = iie.getRequiredContext().items().get();
                     String itemString = "unknown";
-                    if (cond instanceof ItemTagCondition itc)
-                        itemString = itc.getTag().location().getPath();
-                    if (cond instanceof ItemIdentifierCondition iic)
-                        itemString = iic.getIdentifier().getPath();
+
+                    // Check if the HolderSet contains a tag or identifier condition
+                    if (cond instanceof HolderSet.Named<Item> namedSet) {
+                        // Handle tag-based condition
+                        ResourceLocation tagLocation = namedSet.key().location();
+                        itemString = tagLocation.getPath();
+                    } else if (cond instanceof HolderSet.Direct<Item> directSet) {
+                        // Handle direct item identifier condition
+                        Holder<Item> itemHolder = directSet.getRandomElement(RandomSource.create()).orElse(null);
+                        if (itemHolder != null) {
+                            Item item = itemHolder.value(); // Extract Item from Holder<Item>
+                            ResourceLocation itemLocation = BuiltInRegistries.ITEM.getKey(item);
+                            itemString = itemLocation.getPath();
+                        }
+                    } else {
+                        // Fallback for unexpected condition types
+                        itemString = "unknown_item_condition";
+                    }
+
                     MutableComponent iieComponent = Component.literal("- Item: " + itemString);
                     hover.append(iieComponent);
                     break;
                 }
-                default: {
-                    hover.append("Unknown?\n");
+                default:
+                    hover.append("Unknown condition type\n");
                 }
-                ;
-            }
-
 
             hover.append(" \n");
             if (!evolution.getRequirements().isEmpty()) {

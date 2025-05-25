@@ -13,10 +13,14 @@ import com.cobblemon.mod.common.registry.ItemTagCondition;
 import com.cobblemon.mod.common.registry.StructureIdentifierCondition;
 import com.cobblemon.mod.common.registry.StructureTagCondition;
 import kotlin.ranges.IntRange;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -115,12 +119,27 @@ public class EvolutionRequirementUtil {
                 );
             }
             case HeldItemRequirement hir: {
-                RegistryLikeCondition<Item> cond = hir.getItemCondition().getItem();
-                String itemString = "Unknown";
-                if (cond instanceof ItemTagCondition itc)
-                    itemString = itc.getTag().location().getPath();
-                if (cond instanceof ItemIdentifierCondition iic)
-                    itemString = iic.getIdentifier().getPath();
+                HolderSet<Item> cond = hir.getItemCondition().items().get();
+                String itemString = "unknown";
+
+                // Check if the HolderSet contains a tag or identifier condition
+                if (cond instanceof HolderSet.Named<Item> namedSet) {
+                    // Handle tag-based condition
+                    ResourceLocation tagLocation = namedSet.key().location();
+                    itemString = tagLocation.getPath();
+                } else if (cond instanceof HolderSet.Direct<Item> directSet) {
+                    // Handle direct item identifier condition
+                    Holder<Item> itemHolder = directSet.getRandomElement(RandomSource.create()).orElse(null);
+                    if (itemHolder != null) {
+                        Item item = itemHolder.value(); // Extract Item from Holder<Item>
+                        ResourceLocation itemLocation = BuiltInRegistries.ITEM.getKey(item);
+                        itemString = itemLocation.getPath();
+                    }
+                } else {
+                    // Fallback for unexpected condition types
+                    itemString = "unknown_item_condition";
+                }
+
                 return "Held item: " + itemString;
             }
             case LevelRequirement lr: {
