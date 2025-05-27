@@ -3,6 +3,7 @@ package net.ajsdev.cobblemonbookwiki.book.page;
 import com.cobblemon.mod.common.api.conditional.RegistryLikeCondition;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
 import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools;
+import com.cobblemon.mod.common.api.spawning.TimeRange;
 import com.cobblemon.mod.common.api.spawning.condition.*;
 import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail;
 import com.cobblemon.mod.common.pokemon.FormData;
@@ -21,10 +22,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -201,6 +199,17 @@ public class SpawnDetailPage {
             }
         }
 
+        TimeRange timeRange = cond.getTimeRange();
+        if (timeRange != null) {
+            String timeName = "custom";
+            for (Map.Entry<String, TimeRange> entry : TimeRange.Companion.getTimeRanges().entrySet()) {
+                if (entry.getValue().getRanges().equals(timeRange.getRanges())) {
+                    timeName = entry.getKey();
+                    break;
+                }
+            }
+            hover.append(String.format("Time: %s\n", timeName));
+        }
 
         Set<RegistryLikeCondition<Biome>> biomeConds = cond.getBiomes();
         if (biomeConds != null && !biomeConds.isEmpty()) {
