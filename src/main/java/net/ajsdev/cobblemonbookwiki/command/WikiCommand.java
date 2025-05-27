@@ -12,6 +12,7 @@ import net.ajsdev.cobblemonbookwiki.book.WikiBookBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.Component;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
@@ -20,6 +21,7 @@ import static net.minecraft.commands.Commands.literal;
 public class WikiCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("wiki")
+                .executes(WikiCommand::executeWithoutArguments)
                 .then(
                         argument("species", SpeciesArgumentType.Companion.species())
                                 .executes(WikiCommand::executeWithStandardForm)
@@ -30,6 +32,13 @@ public class WikiCommand {
                                 )
                 )
         );
+    }
+
+    // Handles: /wiki (without arguments)
+    private static int executeWithoutArguments(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        player.sendSystemMessage(Component.literal("Použij /wiki <pokemon> [forma] nebo /webwiki pro naši webovou wiki"));
+        return 0;
     }
 
     // Handles: /wiki <species>
@@ -57,8 +66,6 @@ public class WikiCommand {
 
         return 1;
     }
-
-
 }
 
 
