@@ -1,7 +1,9 @@
 package net.ajsdev.cobblemonbookwiki.book.page;
 
+import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.conditional.RegistryLikeCondition;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools;
 import com.cobblemon.mod.common.api.spawning.TimeRange;
 import com.cobblemon.mod.common.api.spawning.condition.*;
@@ -26,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.cobblemon.mod.common.util.ResourceLocationExtensionsKt.asIdentifierDefaultingNamespace;
 import static java.util.Objects.requireNonNullElse;
 
 public class SpawnDetailPage {
@@ -45,6 +48,9 @@ public class SpawnDetailPage {
                 .filter(spawnDetail -> {
                     PokemonProperties pp = spawnDetail.getPokemon();
                     if (pp.getSpecies() == null) return false;
+                    Species resolvedSpecies = PokemonSpecies.INSTANCE.getByIdentifier(asIdentifierDefaultingNamespace(
+                            pp.getSpecies(), Cobblemon.MODID));
+                    if (species != resolvedSpecies) return false;
                     Pokemon pokemon = pp.create();
                     return pokemon.getSpecies().getName().equals(species.getName()) &&
                             pokemon.getForm().getName().equals(formData.getName());
