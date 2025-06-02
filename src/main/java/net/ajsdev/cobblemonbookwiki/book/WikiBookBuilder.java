@@ -44,13 +44,13 @@ public class WikiBookBuilder {
     }
 
     public static String getFullNameString(FormData formData, Species species) {
-        String formName = (formData.getName().equals("Normal") && formData.getAspects().isEmpty()) ?
-                null :
-                StringUtils.capitalize(formData.getAspects().getFirst());
+        String formName = null;
+        if (!formData.getName().equals("Normal") && !formData.getAspects().isEmpty()) {
+            formName = StringUtils.capitalize(formData.getAspects().getFirst());
+        }
         String speciesName = StringUtils.capitalize(species.getName());
         return formName != null ?
                 String.format("%s %s", formName, speciesName) :
                 speciesName;
     }
-
 }
