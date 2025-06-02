@@ -23,6 +23,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,11 +37,19 @@ public class EvolutionPage {
         List<Evolution> evolutions = formData.getEvolutions().stream().toList();
         if (evolutions.isEmpty()) {
             components.add(Component.literal("This pokemon does not evolve."));
+            return components; // Early return to avoid processing empty evolutions
         }
-
 
         for (Evolution evolution : evolutions) {
             MutableComponent hover = Component.empty();
+
+            // Validate evolution result before processing
+            if (evolution.getResult() == null) {
+                hover.append("Invalid evolution result\n");
+                components.add(Component.literal("Error: Invalid evolution data\n")
+                        .withStyle(ChatFormatting.RED));
+                continue; // Skip to next evolution
+            }
 
             switch (evolution) {
                 case LevelUpEvolution ignored: {
@@ -49,7 +58,7 @@ public class EvolutionPage {
                 }
                 case TradeEvolution te: {
                     hover.append("Trade Evolution\n");
-                    if (te.getRequiredContext().getSpecies() != null) {
+                    if (te.getRequiredContext() != null && te.getRequiredContext().getSpecies() != null) {
                         Pokemon tradeForPokemon = te.getRequiredContext().create();
                         String tradeForName = WikiBookBuilder.getFullNameString(tradeForPokemon.getForm(),
                                 tradeForPokemon.getSpecies());
@@ -69,7 +78,6 @@ public class EvolutionPage {
                     hover.append(bceComponent);
                     break;
                 }
-
                 case ItemInteractionEvolution iie: {
                     hover.append("Use Item Evolution\n");
                     HolderSet<Item> cond = iie.getRequiredContext().items().get();
@@ -99,7 +107,7 @@ public class EvolutionPage {
                 }
                 default:
                     hover.append("Unknown condition type\n");
-                }
+            }
 
             hover.append(" \n");
             if (!evolution.getRequirements().isEmpty()) {
@@ -108,18 +116,18 @@ public class EvolutionPage {
                 for (EvolutionRequirement req : evolution.getRequirements()) {
                     hover.append(Component.literal(EvolutionRequirementUtil.getReadableString(req, ra)))
                             .append("\n");
-
                 }
             }
 
+            // Create Pokémon and validate species/form
             Pokemon evo = evolution.getResult().create();
-            String evoName = WikiBookBuilder.getFullNameString(evo.getForm(), evo.getSpecies());
-            String name = evolution.getResult().getSpecies() == null ?
-                    "Error"
-                    : evoName;
+            String evoName = "Error";
+            if (evo.getSpecies() != null && evo.getForm() != null) {
+                evoName = WikiBookBuilder.getFullNameString(evo.getForm(), evo.getSpecies());
+            }
 
             components.add(
-                    Component.literal(String.format("%s\n\n", name))
+                    Component.literal(String.format("%s\n\n", evoName))
                             .withStyle(Style.EMPTY
                                     .applyFormats(ChatFormatting.BOLD, ChatFormatting.BLUE)
                                     .withHoverEvent(new HoverEvent(
@@ -128,9 +136,11 @@ public class EvolutionPage {
                                     ))
                                     .withClickEvent(new ClickEvent(
                                             ClickEvent.Action.RUN_COMMAND,
-                                            "/wiki " +
-                                                    evo.getSpecies().getName().toLowerCase() + " " +
-                                                    evo.getForm().getName().toLowerCase()
+                                            evo.getSpecies() != null && evo.getForm() != null ?
+                                                    "/wiki " +
+                                                            evolution.getResult().getSpecies().toLowerCase() + " " +
+                                                            evo.getForm().getName().toLowerCase().replaceAll("-", "") :
+                                                    "/wiki error"
                                     ))
                             ));
         }
