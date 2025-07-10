@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.abilities.CommonAbilityType;
 import com.cobblemon.mod.common.api.abilities.PotentialAbility;
 import com.cobblemon.mod.common.api.pokemon.egg.EggGroup;
 import com.cobblemon.mod.common.api.pokemon.stats.Stat;
+import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.FormData;
 import com.cobblemon.mod.common.pokemon.Species;
@@ -58,18 +59,21 @@ public class OverviewPage {
 
     private static MutableComponent formatBaseStats(FormData formData) {
         Map<Stat, Integer> baseStats = formData.getBaseStats();
-        MutableComponent hover = Component.empty();
-        int total = 0;
-        for (Map.Entry<Stat, Integer> e : baseStats.entrySet()) {
-            Stat stat = e.getKey();
-            int value = e.getValue();
-            total += value;
+        MutableComponent hover = Component.literal("Base Stats:\n");
 
-            hover.append(stat.getDisplayName());
-            hover.append(Component.literal(String.format(": %s\n", value)));
-        }
-        hover.append(" \n");
-        hover.append(Component.literal(String.format("Stat Total: %s", total)));
+        hover.append(Component.literal(String.format("HP: %s\n", baseStats.get(Stats.HP))));
+        hover.append(Component.literal(String.format("Attack: %s\n", baseStats.get(Stats.ATTACK))));
+        hover.append(Component.literal(String.format("Defense: %s\n", baseStats.get(Stats.DEFENCE))));
+        hover.append(Component.literal(String.format("Special Attack: %s\n", baseStats.get(Stats.SPECIAL_ATTACK))));
+        hover.append(Component.literal(String.format("Special Defense: %s\n", baseStats.get(Stats.SPECIAL_DEFENCE))));
+        hover.append(Component.literal(String.format("Speed: %s\n", baseStats.get(Stats.SPEED))));
+
+        int total = baseStats.entrySet().stream()
+                .filter(entry -> entry.getKey().getType() == Stat.Type.PERMANENT)
+                .mapToInt(Map.Entry::getValue)
+                .sum();
+
+        hover.append(Component.literal(String.format("\nStat Total: %s", total)));
 
         return Component.literal("[BASE STATS]\n")
                 .withStyle(Style.EMPTY
