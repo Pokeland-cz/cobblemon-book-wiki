@@ -47,7 +47,6 @@ dependencies {
     modImplementation("com.gitlab.aglarcz.cobblemon:fabric:c1ce5491")
 
     modImplementation("eu.pb4:sgui:1.6.1+1.21.1")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 }
 
 
