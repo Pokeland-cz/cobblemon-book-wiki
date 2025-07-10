@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "net.ajsdev"
-version = "1.0.0"
+version = "1.1.0"
 var minecraft_version = "1.21.1"
 var loader_version = "0.16.14"
 var fabric_version = "0.116.0+1.21.1"
