@@ -59,11 +59,9 @@ public class WikiCommand {
 
 
     private static int sendWikiBook(ServerPlayer player, FormData formData) {
-
         ItemStack book = WikiBookBuilder.build(formData, player.registryAccess());
         BookGui gui = new BookGui(player, book);
         gui.open();
-
         return 1;
     }
 }
