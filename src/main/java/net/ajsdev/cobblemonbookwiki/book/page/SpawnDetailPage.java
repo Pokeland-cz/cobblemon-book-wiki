@@ -45,15 +45,26 @@ public class SpawnDetailPage {
                 .stream()
                 .filter(detail -> detail instanceof PokemonSpawnDetail)
                 .map(sd -> (PokemonSpawnDetail) sd)
+                .peek(sd -> System.out.println("Checking spawn detail: " + sd.getPokemon().asString(",")))
                 .filter(spawnDetail -> {
                     PokemonProperties pp = spawnDetail.getPokemon();
-                    if (pp.getSpecies() == null) return false;
+                    if (pp.getSpecies() == null) {
+                        System.out.println("Null species for: " + pp.asString(","));
+                        return false;
+                    }
                     Species resolvedSpecies = PokemonSpecies.INSTANCE.getByIdentifier(asIdentifierDefaultingNamespace(
                             pp.getSpecies(), Cobblemon.MODID));
-                    if (species != resolvedSpecies) return false;
+                    if (species != resolvedSpecies) {
+                        System.out.println("Species mismatch: Expected " + species.getName() + ", got " + resolvedSpecies);
+                        return false;
+                    }
                     Pokemon pokemon = pp.create();
-                    return pokemon.getSpecies().getName().equals(species.getName()) &&
+                    boolean matches = pokemon.getSpecies().getName().equals(species.getName()) &&
                             pokemon.getForm().getName().equals(formData.getName());
+                    if (!matches) {
+                        System.out.println("Form mismatch: Expected " + formData.getName() + ", got " + pokemon.getForm().getName());
+                    }
+                    return matches;
                 })
                 .toList();
     }
@@ -153,10 +164,10 @@ public class SpawnDetailPage {
             if (asCond.getNeededNearbyBlocks() != null) {
                 String blocks = asCond.getNeededNearbyBlocks().stream().map(rlc -> {
                     if (rlc instanceof BlockIdentifierCondition bic)
-                        return bic.getIdentifier().getPath();
+                        return bic.getIdentifier().getNamespace();
 
                     if (rlc instanceof BlockTagCondition btc)
-                        return btc.getTag().location().getPath();
+                        return btc.getTag().location().getNamespace();
                     return "unknown";
                 }).collect(Collectors.joining(", "));
                 hover.append(String.format("Nearby Blocks: %s\n", blocks));
