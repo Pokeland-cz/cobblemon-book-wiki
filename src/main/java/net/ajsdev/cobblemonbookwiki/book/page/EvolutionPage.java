@@ -139,7 +139,7 @@ public class EvolutionPage {
                                             evo.getSpecies() != null && evo.getForm() != null ?
                                                     "/wiki " +
                                                             evolution.getResult().getSpecies().toLowerCase() + " " +
-                                                            evo.getForm().getName().toLowerCase().replaceAll("-", "") :
+                                                            evo.getForm().getName().toLowerCase().replaceAll("[_\\-]", "") :
                                                     "/wiki error"
                                     ))
                             ));
