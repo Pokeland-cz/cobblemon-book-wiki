@@ -190,14 +190,21 @@ public class EvolutionRequirementUtil {
             }
             case PlayerHasAdvancementRequirement phr: {
                 ResourceLocation adv = phr.getRequiredAdvancement();
-                String displayName = StringUtils.capitalize(
-                        adv.getPath().replace('/', ' ').replace('_', ' ')
-                );
-                return String.format(
-                        "Completed advancement %s:%s",
-                        adv.getNamespace(),
-                        displayName
-                );
+                if (adv == null) {
+                    return "Requires an unknown or missing advancement";
+                }
+                try {
+                    String displayName = StringUtils.capitalize(
+                            adv.getPath().replace('/', ' ').replace('_', ' ')
+                    );
+                    return String.format(
+                            "Completed advancement %s:%s",
+                            adv.getNamespace(),
+                            displayName
+                    );
+                } catch (Exception e) {
+                    return "Requires advancement: " + adv.toString();
+                }
             }
             case PokemonPropertiesRequirement ppr: {
                 PokemonProperties target = ppr.getTarget();

@@ -45,14 +45,15 @@ public class WikiBookBuilder {
         }
     }
 
-    public static String getFullNameString(FormData formData, Species species) {
-        String formName = null;
-        if (!formData.getName().equals("Normal") && !formData.getAspects().isEmpty()) {
-            formName = StringUtils.capitalize(formData.getAspects().getFirst());
+    public static String getFullNameString(FormData form, Species species) {
+        String baseName = StringUtils.capitalize(species.getName());
+
+        // Check if form has a custom display name
+        if (form != null && form.getName() != null && !form.getName().isEmpty()) {
+            String formName = StringUtils.capitalize(form.getName().replace("-", " ").replace("_", " "));
+            return baseName + " (" + formName + ")";
         }
-        String speciesName = StringUtils.capitalize(species.getName());
-        return formName != null ?
-                String.format("%s %s", formName, speciesName) :
-                speciesName;
+
+        return baseName;
     }
 }
