@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.conditional.RegistryLikeCondition;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools;
+import com.cobblemon.mod.common.api.spawning.MoonPhaseRange;
 import com.cobblemon.mod.common.api.spawning.TimeRange;
 import com.cobblemon.mod.common.api.spawning.condition.*;
 import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail;
@@ -65,7 +66,6 @@ public class SpawnDetailPage {
         page.append(Component.literal(String.format("Spawn Detail %s/%s:\n\n", pageNo, pageTotal))
                 .withStyle(ChatFormatting.BOLD));
 
-
         Component weightComponent = Component.literal(String.format("(%s)\n", sd.getWeight()))
                 .withStyle(Style.EMPTY
                         .withHoverEvent(new HoverEvent(
@@ -81,7 +81,13 @@ public class SpawnDetailPage {
             String levelRange = String.format("%s - %s", sd.getLevelRange().getFirst(), sd.getLevelRange().getEndInclusive());
             page.append(Component.literal(String.format("Level %s\n", levelRange)));
         }
-        page.append(Component.literal(String.format("%s \n\n", StringUtils.capitalize(sd.getDisplayName()))));
+
+        // Fix: Avoid printing "null" if the display name is missing
+        if (sd.getDisplayName() != null) {
+            page.append(Component.literal(String.format("%s \n\n", StringUtils.capitalize(sd.getDisplayName()))));
+        } else {
+            page.append(Component.literal("\n\n"));
+        }
 
         MutableComponent condHover = Component.empty();
         condHover.append("Conditions:\n");
@@ -118,20 +124,22 @@ public class SpawnDetailPage {
 
 
     private static void handleCondition(MutableComponent hover, SpawningCondition<?> cond) {
-        if (cond.isRaining() != null)
-            hover.append(String.format("Is raining: %s\n", cond.isRaining() ? "Yes" : "No"));
-        if (cond.isThundering() != null)
-            hover.append(String.format("Is thundering: %s\n", cond.isThundering() ? "Yes" : "No"));
-        if (cond.isSlimeChunk() != null)
-            hover.append(String.format("Slime chunk: %s\n", cond.isSlimeChunk() ? "Yes" : "No"));
-        if (cond.getMoonPhase() != null)
-            hover.append(String.format("Moon phase: %s\n", cond.getMoonPhase()));
-        if (cond.getCanSeeSky() != null)
-            hover.append(String.format("Can see sky: %s\n", cond.getCanSeeSky() ? "Yes" : "No"));
-        if (cond.getMinY() != null)
-            hover.append(String.format("Min Y: %s\n", cond.getMinY()));
-        if (cond.getMaxY() != null)
-            hover.append(String.format("Max Y: %s\n", cond.getMaxY()));
+        if (cond.isRaining() != null) hover.append(String.format("Is raining: %s\n", cond.isRaining() ? "Yes" : "No"));
+        if (cond.isThundering() != null) hover.append(String.format("Is thundering: %s\n", cond.isThundering() ? "Yes" : "No"));
+        if (cond.isSlimeChunk() != null) hover.append(String.format("Slime chunk: %s\n", cond.isSlimeChunk() ? "Yes" : "No"));
+        if (cond.getMoonPhase() != null) {
+            String phaseName = "custom"; // Fallback just in case
+            for (Map.Entry<String, MoonPhaseRange> entry : MoonPhaseRange.Companion.getMoonPhaseRanges().entrySet()) {
+                if (entry.getValue().getRanges().equals(cond.getMoonPhase().getRanges())) {
+                    phaseName = entry.getKey();
+                    break;
+                }
+            }
+            hover.append(String.format("Moon phase: %s\n", StringUtils.capitalize(phaseName)));
+        }
+        if (cond.getCanSeeSky() != null) hover.append(String.format("Can see sky: %s\n", cond.getCanSeeSky() ? "Yes" : "No"));
+        if (cond.getMinY() != null) hover.append(String.format("Min Y: %s\n", cond.getMinY()));
+        if (cond.getMaxY() != null) hover.append(String.format("Max Y: %s\n", cond.getMaxY()));
 
         if (cond.getMinLight() != null || cond.getMaxLight() != null) {
             int min = requireNonNullElse(cond.getMinLight(), 0);
@@ -146,61 +154,38 @@ public class SpawnDetailPage {
         }
 
         if (cond instanceof AreaSpawningCondition asCond) {
-            if (asCond.getMinHeight() != null)
-                hover.append(String.format("Min Height: %s\n", asCond.getMinHeight()));
-            if (asCond.getMaxHeight() != null)
-                hover.append(String.format("Max Height: %s\n", asCond.getMaxHeight()));
+            if (asCond.getMinHeight() != null) hover.append(String.format("Min Height: %s\n", asCond.getMinHeight()));
+            if (asCond.getMaxHeight() != null) hover.append(String.format("Max Height: %s\n", asCond.getMaxHeight()));
             if (asCond.getNeededNearbyBlocks() != null) {
-                String blocks = asCond.getNeededNearbyBlocks().stream().map(rlc -> {
-                    if (rlc instanceof BlockIdentifierCondition bic)
-                        return bic.getIdentifier().getPath();
-
-                    if (rlc instanceof BlockTagCondition btc)
-                        return btc.getTag().location().getPath();
-                    return "unknown";
-                }).collect(Collectors.joining(", "));
-                hover.append(String.format("Nearby Blocks: %s\n", blocks));
+                hover.append(String.format("Nearby Blocks: %s\n", formatBlockConditions(asCond.getNeededNearbyBlocks())));
             }
         }
 
         if (cond instanceof FishingSpawningCondition fCond) {
-            if (fCond.getMinLureLevel() != null)
-                hover.append(String.format("Min Lure Level: %s\n", fCond.getMinLureLevel()));
-            if (fCond.getMaxLureLevel() != null)
-                hover.append(String.format("Max Lure Level: %s\n", fCond.getMaxLureLevel()));
-            if (fCond.getBait() != null)
-                hover.append(String.format("Bait: %s\n", fCond.getBait()));
-            if (fCond.getRodType() != null)
-                hover.append(String.format("Rod Type: %s\n", fCond.getRodType()));
+            if (fCond.getMinLureLevel() != null) hover.append(String.format("Min Lure Level: %s\n", fCond.getMinLureLevel()));
+            if (fCond.getMaxLureLevel() != null) hover.append(String.format("Max Lure Level: %s\n", fCond.getMaxLureLevel()));
+            if (fCond.getBait() != null) hover.append(String.format("Bait: %s\n", fCond.getBait()));
+            if (fCond.getRodType() != null) hover.append(String.format("Rod Type: %s\n", fCond.getRodType()));
         }
 
         if (cond instanceof GroundedSpawningCondition gCond) {
             if (gCond.getNeededBaseBlocks() != null) {
-                String blocks = gCond.getNeededBaseBlocks().stream().map(rlc -> {
-                    if (rlc instanceof BlockIdentifierCondition bic)
-                        return bic.getIdentifier().getPath();
-
-                    if (rlc instanceof BlockTagCondition btc)
-                        return btc.getTag().location().getPath();
-                    return "unknown";
-                }).collect(Collectors.joining(", "));
-                hover.append(String.format("Base Blocks: %s\n", blocks));
+                hover.append(String.format("Base Blocks: %s\n", formatBlockConditions(gCond.getNeededBaseBlocks())));
+            }
+            // Fix: Adding Nearby blocks handler to grounded spawns
+            if (gCond.getNeededNearbyBlocks() != null) {
+                hover.append(String.format("Nearby Blocks: %s\n", formatBlockConditions(gCond.getNeededNearbyBlocks())));
             }
         }
 
         if (cond instanceof SubmergedSpawningCondition sCond) {
-            if (sCond.getMinDepth() != null)
-                hover.append(String.format("Min Depth: %s\n", sCond.getMinDepth()));
-            if (sCond.getMaxDepth() != null)
-                hover.append(String.format("Max Depth: %s\n", sCond.getMaxDepth()));
-            if (sCond.getFluidIsSource() != null)
-                hover.append(String.format("Needs Source Block: %s\n", sCond.getFluidIsSource() ? "Yes" : "No"));
+            if (sCond.getMinDepth() != null) hover.append(String.format("Min Depth: %s\n", sCond.getMinDepth()));
+            if (sCond.getMaxDepth() != null) hover.append(String.format("Max Depth: %s\n", sCond.getMaxDepth()));
+            if (sCond.getFluidIsSource() != null) hover.append(String.format("Needs Source Block: %s\n", sCond.getFluidIsSource() ? "Yes" : "No"));
             if (sCond.getFluid() != null) {
                 String fluidString = "Unknown";
-                if (sCond.getFluid() instanceof FluidTagCondition ftc)
-                    fluidString = ftc.getTag().location().getPath();
-                if (sCond.getFluid() instanceof FluidIdentifierCondition fic)
-                    fluidString = fic.getIdentifier().getPath();
+                if (sCond.getFluid() instanceof FluidTagCondition ftc) fluidString = ftc.getTag().location().getPath();
+                if (sCond.getFluid() instanceof FluidIdentifierCondition fic) fluidString = fic.getIdentifier().getPath();
                 hover.append(String.format("Fluid: %s\n", fluidString));
             }
         }
@@ -222,48 +207,61 @@ public class SpawnDetailPage {
             hover.append("Biomes:\n");
             for (RegistryLikeCondition<Biome> rlc : biomeConds) {
                 ResourceLocation resourceLocation = null;
-                if (rlc instanceof BiomeTagCondition) {
-                    resourceLocation = ((BiomeTagCondition) rlc).getTag().location();
-                }
-                if (rlc instanceof BiomeIdentifierCondition) {
-                    resourceLocation = ((BiomeIdentifierCondition) rlc).getIdentifier();
-                }
+                if (rlc instanceof BiomeTagCondition btc) resourceLocation = btc.getTag().location();
+                if (rlc instanceof BiomeIdentifierCondition bic) resourceLocation = bic.getIdentifier();
 
                 if (resourceLocation != null) {
-                    String pretty = Arrays.stream(resourceLocation.getPath().split("_"))
-                            .map(s -> StringUtils.capitalize(s.toLowerCase()))
-                            .collect(Collectors.joining(" "));
-
-                    hover.append(Component.literal(String.format("- %s\n", pretty)));
+                    hover.append(Component.literal(String.format("- %s\n", formatResourceName(resourceLocation))));
                 } else {
-                    hover.append(Component.literal("- Something went wrong!"));
+                    hover.append(Component.literal("- Something went wrong!\n"));
                 }
-
-
             }
         }
 
         if (cond.getStructures() != null && !cond.getStructures().isEmpty()) {
             hover.append("Structures:\n");
             for (Either<ResourceLocation, TagKey<Structure>> either : cond.getStructures()) {
-                ResourceLocation resourceLocation = null;
-
-                if (either.left().isPresent())
-                    resourceLocation = either.left().get();
-                if (either.right().isPresent())
-                    resourceLocation = either.right().get().location();
+                // Extracts the ResourceLocation dynamically whether it's left (ResourceLocation) or right (TagKey)
+                ResourceLocation resourceLocation = either.map(
+                        resLoc -> resLoc,
+                        tagKey -> tagKey.location()
+                );
 
                 if (resourceLocation != null) {
-                    String pretty = Arrays.stream(resourceLocation.getPath().split("_"))
-                            .map(s -> StringUtils.capitalize(s.toLowerCase()))
-                            .collect(Collectors.joining(" "));
-
-                    hover.append(Component.literal(String.format("- %s\n", pretty)));
+                    hover.append(Component.literal(String.format("- %s\n", formatResourceName(resourceLocation))));
                 } else {
-                    hover.append(Component.literal("- Something went wrong!"));
+                    hover.append(Component.literal("- Something went wrong!\n"));
                 }
             }
         }
     }
 
+    // --- NEW HELPER METHODS ---
+
+    /**
+     * Extracts and formats the path names from a collection of block conditions.
+     */
+    private static String formatBlockConditions(Collection<? extends RegistryLikeCondition<?>> blocks) {
+        if (blocks == null || blocks.isEmpty()) return "None";
+        return blocks.stream().map(rlc -> {
+            if (rlc instanceof BlockIdentifierCondition bic) {
+                return bic.getIdentifier().getPath();
+            }
+            if (rlc instanceof BlockTagCondition btc) {
+                return btc.getTag().location().getPath();
+            }
+            return "unknown";
+        }).collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Takes a ResourceLocation, splits its path by underscores, and capitalizes each word.
+     * Example: "dark_forest" -> "Dark Forest"
+     */
+    private static String formatResourceName(ResourceLocation resourceLocation) {
+        if (resourceLocation == null) return "Unknown";
+        return Arrays.stream(resourceLocation.getPath().split("_"))
+                .map(s -> StringUtils.capitalize(s.toLowerCase()))
+                .collect(Collectors.joining(" "));
+    }
 }
