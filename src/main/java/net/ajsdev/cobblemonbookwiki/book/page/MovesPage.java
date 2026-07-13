@@ -12,23 +12,20 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class MovesPage {
+
+    private static final int LINES_PER_PAGE = 13;
+
     public static List<Component> build(FormData formData) {
         Learnset learnset = formData.getMoves();
-        Map<Integer, List<MoveTemplate>> levelUpMoves = learnset.getLevelUpMoves();
-        List<MoveTemplate> eggMoves = learnset.getEggMoves();
-        List<MoveTemplate> tutorMoves = learnset.getTutorMoves();
-        List<MoveTemplate> tmMoves = learnset.getTmMoves();
-        List<MoveTemplate> formChangeMoves = learnset.getFormChangeMoves();
-        Set<MoveTemplate> evolutionMoves = learnset.getEvolutionMoves();
-
         List<Component> allLines = new ArrayList<>();
 
-        // Add header + moves per section
+        // 1. Level-Up Moves (Handled uniquely because of the level numbers)
+        Map<Integer, List<MoveTemplate>> levelUpMoves = learnset.getLevelUpMoves();
         if (!levelUpMoves.isEmpty()) {
             allLines.add(Component.literal("Level-Up Moves").withStyle(ChatFormatting.BOLD));
             levelUpMoves.entrySet().stream()
@@ -45,55 +42,22 @@ public class MovesPage {
                             allLines.add(moveComponent);
                         }
                     });
-            allLines.add(Component.literal("")); // Spacer
+            allLines.add(Component.empty()); // Spacer
         }
 
-        if (!evolutionMoves.isEmpty()) {
-            allLines.add(Component.literal("Evolution Moves").withStyle(ChatFormatting.BOLD));
-            for (MoveTemplate move : evolutionMoves) {
-                allLines.add(Component.literal("- ").append(formatMove(move)));
-            }
-            allLines.add(Component.literal(""));
-        }
+        // 2. All other move categories using our new helper method
+        addMoveSection(allLines, "Evolution Moves", learnset.getEvolutionMoves());
+        addMoveSection(allLines, "Egg Moves", learnset.getEggMoves());
+        addMoveSection(allLines, "Tutor Moves", learnset.getTutorMoves());
+        addMoveSection(allLines, "TM Moves", learnset.getTmMoves());
+        addMoveSection(allLines, "Form Change Moves", learnset.getFormChangeMoves());
 
-        if (!eggMoves.isEmpty()) {
-            allLines.add(Component.literal("Egg Moves").withStyle(ChatFormatting.BOLD));
-            for (MoveTemplate move : eggMoves) {
-                allLines.add(Component.literal("- ").append(formatMove(move)));
-            }
-            allLines.add(Component.literal(""));
-        }
-
-        if (!tutorMoves.isEmpty()) {
-            allLines.add(Component.literal("Tutor Moves").withStyle(ChatFormatting.BOLD));
-            for (MoveTemplate move : tutorMoves) {
-                allLines.add(Component.literal("- ").append(formatMove(move)));
-            }
-            allLines.add(Component.literal(""));
-        }
-
-        if (!tmMoves.isEmpty()) {
-            allLines.add(Component.literal("TM Moves").withStyle(ChatFormatting.BOLD));
-            for (MoveTemplate move : tmMoves) {
-                allLines.add(Component.literal("- ").append(formatMove(move)));
-            }
-            allLines.add(Component.literal(""));
-        }
-
-        if (!formChangeMoves.isEmpty()) {
-            allLines.add(Component.literal("Form Change Moves").withStyle(ChatFormatting.BOLD));
-            for (MoveTemplate move : formChangeMoves) {
-                allLines.add(Component.literal("- ").append(formatMove(move)));
-            }
-            allLines.add(Component.literal(""));
-        }
-
-
+        // 3. Pagination Logic
         List<Component> pages = new ArrayList<>();
-        final int LINES_PER_PAGE = 13;
         for (int i = 0; i < allLines.size(); i += LINES_PER_PAGE) {
             int end = Math.min(i + LINES_PER_PAGE, allLines.size());
             List<Component> pageLines = allLines.subList(i, end);
+
             MutableComponent page = Component.empty();
             for (Component line : pageLines) {
                 page.append(line).append("\n");
@@ -104,6 +68,18 @@ public class MovesPage {
         return pages;
     }
 
+    /**
+     * Helper method to add standard move lists to prevent code duplication.
+     */
+    private static void addMoveSection(List<Component> allLines, String header, Collection<MoveTemplate> moves) {
+        if (!moves.isEmpty()) {
+            allLines.add(Component.literal(header).withStyle(ChatFormatting.BOLD));
+            for (MoveTemplate move : moves) {
+                allLines.add(Component.literal("- ").append(formatMove(move)));
+            }
+            allLines.add(Component.empty()); // Spacer
+        }
+    }
 
     private static MutableComponent formatMove(MoveTemplate template) {
         MutableComponent hover = Component.literal("Move Info:\n");
@@ -131,14 +107,13 @@ public class MovesPage {
         if (accuracy != null) hover.append(accuracy);
         hover.append(description);
 
-        boolean isNormal = elementalType.getName().equals(ElementalTypes.INSTANCE.getNORMAL().getName());
+        boolean isNormal = elementalType.getName().equals(ElementalTypes.NORMAL.getName());
         Style style = Style.EMPTY.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover));
+
         if (!isNormal) {
             style = style.withColor(elementalType.getHue());
         }
 
         return template.getDisplayName().withStyle(style);
     }
-
-
 }
