@@ -6,11 +6,11 @@ plugins {
 }
 
 group = "net.ajsdev"
-version = "1.2.0"
+version = "1.2.0.1-1.7.3"
 var minecraft_version = "1.21.1"
 var loader_version = "0.17.2"
 var fabric_version = "0.116.6+1.21.1"
-var cobblemon_version = "1.7.0+1.21.1"
+var cobblemon_version = "1.7.3+1.21.1"
 
 architectury {
     platformSetupLoomIde()
