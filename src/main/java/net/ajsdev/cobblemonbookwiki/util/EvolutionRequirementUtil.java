@@ -1,33 +1,27 @@
 package net.ajsdev.cobblemonbookwiki.util;
 
 import com.cobblemon.mod.common.api.conditional.RegistryLikeCondition;
-import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties;
 import com.cobblemon.mod.common.api.pokemon.requirement.Requirement;
-import com.cobblemon.mod.common.api.spawning.TimeRange;
-import com.cobblemon.mod.common.api.spawning.condition.MoonPhase;
-import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.pokemon.requirements.*;
+import com.cobblemon.mod.common.registry.BiomeIdentifierCondition;
+import com.cobblemon.mod.common.registry.BiomeTagCondition;
 import com.cobblemon.mod.common.registry.StructureIdentifierCondition;
 import com.cobblemon.mod.common.registry.StructureTagCondition;
-import kotlin.ranges.IntRange;
 import net.minecraft.core.HolderSet;
-import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
+import java.util.stream.Collectors;
 
 public class EvolutionRequirementUtil {
     public static String getReadableString(Requirement req, RegistryAccess ra) {
@@ -36,11 +30,7 @@ public class EvolutionRequirementUtil {
                 AABB box = ar.getBox();
                 Vec3 min = box.getMinPosition();
                 Vec3 max = box.getMaxPosition();
-                return String.format(
-                        "Within area from (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)",
-                        min.x, min.y, min.z,
-                        max.x, max.y, max.z
-                );
+                return String.format("Within area from (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)", min.x, min.y, min.z, max.x, max.y, max.z);
             }
             case AttackDefenceRatioRequirement adr: {
                 return switch (adr.getRatio()) {
@@ -50,287 +40,128 @@ public class EvolutionRequirementUtil {
                 };
             }
             case BattleCriticalHitsRequirement bchr: {
-                int amount = bchr.getAmount();
-                return String.format(
-                        "At least %d critical hits in a single battle",
-                        amount
-                );
+                return String.format("At least %d critical hits in a single battle", bchr.getAmount());
             }
             case BiomeRequirement br: {
-                RegistryLikeCondition<Biome> cond = br.getBiomeCondition();
-                RegistryLikeCondition<Biome> anti = br.getBiomeAnticondition();
-                Registry<Biome> biomeRegistry = ra.registryOrThrow(Registries.BIOME);
-                List<String> allowedBiomes = new ArrayList<>();
-                List<String> deniedBiomes = new ArrayList<>();
-
-                biomeRegistry.keySet().forEach(rl -> {
-                    Biome biome = biomeRegistry.get(rl);
-                    if (cond != null && cond.fits(biome, biomeRegistry)) allowedBiomes.add(rl.getPath());
-                    if (anti != null && anti.fits(biome, biomeRegistry)) deniedBiomes.add(rl.getPath());
-                });
-
-
-                if (!allowedBiomes.isEmpty() && !deniedBiomes.isEmpty()) {
-                    return String.format(
-                            "In biomes: %s; not in biomes: %s",
-                            String.join(", ", allowedBiomes),
-                            String.join(", ", deniedBiomes)
-                    );
-                } else if (!allowedBiomes.isEmpty()) {
-                    return "In biomes: " + String.join(", ", allowedBiomes);
-                } else if (!deniedBiomes.isEmpty()) {
-                    return "Not in biomes: " + String.join(", ", deniedBiomes);
-                } else {
-                    return "Any biome";
-                }
+                return buildConditionString("biome", "biomes", extractConditionNames(br.getBiomeCondition()), extractConditionNames(br.getBiomeAnticondition()));
             }
             case BlocksTraveledRequirement btr: {
-                int amount = btr.getAmount();
-                return String.format(
-                        "Traveled at least %d blocks",
-                        amount
-                );
+                return String.format("Traveled at least %d blocks", btr.getAmount());
             }
             case DamageTakenRequirement dtr: {
-                int amount = dtr.getAmount();
-                return String.format(
-                        "Taken at least %d damage",
-                        amount
-                );
+                return String.format("Taken at least %d damage", dtr.getAmount());
             }
             case DefeatRequirement dr: {
                 PokemonProperties target = dr.getTarget();
                 int amount = dr.getAmount();
-                return String.format(
-                        "Defeat %d %s%s",
-                        amount,
-                        target.getOriginalString(),
-                        amount == 1 ? "" : "s"
-                );
+                return String.format("Defeat %d %s%s", amount, target.getOriginalString(), amount == 1 ? "" : "s");
             }
             case FriendshipRequirement fr: {
-                int amount = fr.getAmount();
-                return String.format(
-                        "Friendship at least %d",
-                        amount
-                );
+                return String.format("Friendship at least %d", fr.getAmount());
             }
             case HeldItemRequirement hir: {
                 Optional<HolderSet<Item>> cond = hir.getItemCondition().items();
                 if (cond.isEmpty()) return "Held Item: Unknown";
-
-                List<String> itemNames = cond.get().stream()
-                        .map(holder -> {
-                            Item item = holder.value();
-                            return item.getName(new ItemStack(item)).getString();
-                        })
-                        .toList();
-
+                List<String> itemNames = cond.get().stream().map(holder -> holder.value().getName(new ItemStack(holder.value())).getString()).toList();
                 return "Held item: [" + String.join(", ", itemNames) + "]";
             }
             case LevelRequirement lr: {
-                int min = lr.getMinLevel();
-                int max = lr.getMaxLevel();
-                if (max == Integer.MAX_VALUE) {
-                    return String.format(
-                            "Reach at least level %d",
-                            min
-                    );
-                } else {
-                    return String.format(
-                            "Reach level %d to %d",
-                            min,
-                            max
-                    );
-                }
+                return (lr.getMaxLevel() == Integer.MAX_VALUE) ? String.format("Reach at least level %d", lr.getMinLevel()) : String.format("Reach level %d to %d", lr.getMinLevel(), lr.getMaxLevel());
             }
             case MoonPhaseRequirement mpr: {
-                MoonPhase phase = mpr.getMoonPhase();
-                String name = phase.name().toLowerCase().replace('_', ' ');
-                return String.format("During %s", name);
+                return String.format("During %s", mpr.getMoonPhase().name().toLowerCase().replace('_', ' '));
             }
             case MoveSetRequirement msr: {
-                MoveTemplate mt = msr.getMove();
-                String moveName = mt.getName();
-                return String.format(
-                        "Knows move %s",
-                        StringUtils.capitalize(moveName)
-                );
+                return String.format("Knows move %s", StringUtils.capitalize(msr.getMove().getName()));
             }
             case MoveTypeRequirement mtr: {
-                ElementalType type = mtr.getType();
-                // e.g. "fire" → "Fire"
-                String displayName = StringUtils.capitalize(type.getName().toLowerCase());
-                return String.format(
-                        "Has a %s-type move",
-                        displayName
-                );
+                return String.format("Has a %s-type move", StringUtils.capitalize(mtr.getType().getName().toLowerCase()));
             }
             case PartyMemberRequirement pmr: {
-                PokemonProperties target = pmr.getTarget();
-                boolean contains = pmr.getContains();
-                String name = StringUtils.capitalize(target.getOriginalString().toLowerCase());
-                return contains
-                        ? String.format("Party must contain %s", name)
-                        : String.format("Party must not contain %s", name);
+                String name = StringUtils.capitalize(pmr.getTarget().getOriginalString().toLowerCase());
+                return pmr.getContains() ? String.format("Party must contain %s", name) : String.format("Party must not contain %s", name);
             }
             case AdvancementRequirement phr: {
                 ResourceLocation adv = phr.getRequiredAdvancement();
-                String displayName = StringUtils.capitalize(
-                        adv.getPath().replace('/', ' ').replace('_', ' ')
-                );
-                return String.format(
-                        "Completed advancement %s:%s",
-                        adv.getNamespace(),
-                        displayName
-                );
+                return String.format("Completed advancement %s:%s", adv.getNamespace(), StringUtils.capitalize(adv.getPath().replace('/', ' ').replace('_', ' ')));
             }
             case PokemonPropertiesRequirement ppr: {
-                PokemonProperties target = ppr.getTarget();
-                return String.format(
-                        "Properties must match: %s",
-                        target.getOriginalString()
-                );
+                return String.format("Properties must match: %s", ppr.getTarget().getOriginalString());
             }
             case PropertyRangeRequirement prr: {
-                String featureKey = prr.getFeature();
-                IntRange range = prr.getRange();
-                int min = range.getStart();
-                int max = range.getEndInclusive();
-                if (min == max) {
-                    return String.format("%s must be %d", featureKey, min);
-                } else {
-                    return String.format("%s must be between %d and %d", featureKey, min, max);
-                }
+                int min = prr.getRange().getStart();
+                int max = prr.getRange().getEndInclusive();
+                return (min == max) ? String.format("%s must be %d", prr.getFeature(), min) : String.format("%s must be between %d and %d", prr.getFeature(), min, max);
             }
             case RecoilRequirement rr: {
-                int amount = rr.getAmount();
-                return String.format(
-                        "Accumulated at least %d recoil damage without fainting",
-                        amount
-                );
+                return String.format("Accumulated at least %d recoil damage without fainting", rr.getAmount());
             }
             case StatCompareRequirement scr: {
-                String high = StringUtils.capitalize(scr.getHighStat().toLowerCase());
-                String low = StringUtils.capitalize(scr.getLowStat().toLowerCase());
-                return String.format(
-                        "%s must be higher than %s",
-                        high,
-                        low
-                );
+                return String.format("%s must be higher than %s", StringUtils.capitalize(scr.getHighStat().toLowerCase()), StringUtils.capitalize(scr.getLowStat().toLowerCase()));
             }
             case StatEqualRequirement ser: {
-                String one = StringUtils.capitalize(ser.getStatOne().toLowerCase());
-                String two = StringUtils.capitalize(ser.getStatTwo().toLowerCase());
-                return String.format(
-                        "%s must equal %s",
-                        one,
-                        two
-                );
+                return String.format("%s must equal %s", StringUtils.capitalize(ser.getStatOne().toLowerCase()), StringUtils.capitalize(ser.getStatTwo().toLowerCase()));
             }
             case StructureRequirement sr: {
-                RegistryLikeCondition<Structure> cond = sr.getStructureCondition();
-                RegistryLikeCondition<Structure> anti = sr.getStructureAnticondition();
-
-                List<String> allowed = new ArrayList<>();
-                List<String> denied = new ArrayList<>();
-
-
-                if (cond instanceof StructureTagCondition stc)
-                    allowed.add(stc.getTag().location().getPath());
-                if (cond instanceof StructureIdentifierCondition sic)
-                    allowed.add(sic.getIdentifier().getPath());
-                if (anti instanceof StructureTagCondition stc)
-                    denied.add(stc.getTag().location().getPath());
-                if (anti instanceof StructureIdentifierCondition sic)
-                    denied.add(sic.getIdentifier().getPath());
-
-                if (!allowed.isEmpty() && !denied.isEmpty()) {
-                    return String.format(
-                            "In structures: %s; not in structures: %s",
-                            String.join(", ", allowed),
-                            String.join(", ", denied)
-                    );
-                } else if (!allowed.isEmpty()) {
-                    return "In structures: " + String.join(", ", allowed);
-                } else if (!denied.isEmpty()) {
-                    return "Not in structures: " + String.join(", ", denied);
-                } else {
-                    return "Any structure";
-                }
+                return buildConditionString("structure", "structures", extractConditionNames(sr.getStructureCondition()), extractConditionNames(sr.getStructureAnticondition()));
             }
             case TimeRangeRequirement tr: {
-                TimeRange timeRange = tr.getRange();
-                List<String> segments = new ArrayList<>();
-
-                // Assume TimeRange inherits a getRanges() method returning List<IntRange>
-                for (IntRange r : timeRange.getRanges()) {
-                    int startTick = r.getStart();
-                    int endTick = r.getEndInclusive();
-
-                    // convert ticks to clock time: 0 ticks = 06:00, 1000 ticks = 1h
-                    int startHour = (startTick / 1000 + 6) % 24;
-                    int startMin = (int) ((startTick % 1000) * 60 / 1000.0);
-                    int endHour = (endTick / 1000 + 6) % 24;
-                    int endMin = (int) ((endTick % 1000) * 60 / 1000.0);
-
-                    segments.add(String.format("%02d:%02d–%02d:%02d",
-                            startHour, startMin,
-                            endHour, endMin));
-                }
-
-                if (segments.isEmpty()) {
-                    return "Any time of day";
-                } else if (segments.size() == 1) {
-                    return "Active between " + segments.getFirst();
-                } else {
-                    // multiple windows, join with commas
-                    return "Active between " + String.join(", ", segments);
-                }
+                List<String> segments = tr.getRange().getRanges().stream().map(r -> {
+                    int startH = ((r.getStart() / 1000) + 6) % 24, startM = (int) (((r.getStart() % 1000) * 60) / 1000.0);
+                    int endH = ((r.getEndInclusive() / 1000) + 6) % 24, endM = (int) (((r.getEndInclusive() % 1000) * 60) / 1000.0);
+                    return String.format("%02d:%02d–%02d:%02d", startH, startM, endH, endM);
+                }).toList();
+                return segments.isEmpty() ? "Any time of day" : "Active between " + String.join(", ", segments);
             }
             case UseMoveRequirement umr: {
-                MoveTemplate move = umr.getMove();
-                int amount = umr.getAmount();
-                String moveName = StringUtils.capitalize(move.getName().toLowerCase());
-                return String.format(
-                        "Use move %s %d times",
-                        moveName,
-                        amount
-                );
+                return String.format("Use move %s %d times", StringUtils.capitalize(umr.getMove().getName().toLowerCase()), umr.getAmount());
             }
             case WeatherRequirement wr: {
-                Boolean raining = wr.isRaining();
-                Boolean thundering = wr.isThundering();
                 List<String> parts = new ArrayList<>();
-
-                if (raining != null) {
-                    parts.add(raining ? "raining" : "not raining");
-                }
-                if (thundering != null) {
-                    parts.add(thundering ? "thundering" : "not thundering");
-                }
-
-                if (parts.isEmpty()) {
-                    return "Any weather";
-                } else {
-                    // join multiple conditions with “ and ”
-                    return "Weather must be " + String.join(" and ", parts);
-                }
+                if (wr.isRaining() != null) parts.add(wr.isRaining() ? "raining" : "not raining");
+                if (wr.isThundering() != null) parts.add(wr.isThundering() ? "thundering" : "not thundering");
+                return parts.isEmpty() ? "Any weather" : "Weather must be " + String.join(" and ", parts);
             }
             case WorldRequirement wr: {
                 ResourceLocation id = wr.getIdentifier();
-                String namespace = id.getNamespace();
-                // e.g. "the_overworld" -> "The overworld"
-                String worldName = StringUtils.capitalize(id.getPath().replace('_', ' ').toLowerCase());
-                if ("minecraft".equals(namespace)) {
-                    return "In " + worldName;
-                } else {
-                    return String.format("In %s:%s", namespace, worldName);
-                }
+                String name = StringUtils.capitalize(id.getPath().replace('_', ' ').toLowerCase());
+                return "minecraft".equals(id.getNamespace()) ? "In " + name : String.format("In %s:%s", id.getNamespace(), name);
             }
             default: {
-                return "Unknown Requirement";
+                String className = req.getClass().getSimpleName();
+                String rawString = req.toString();
+
+                // If it contains an '@', it's a raw memory reference; strip it
+                if (rawString.contains("@")) {
+                    rawString = rawString.substring(0, rawString.indexOf("@"));
+                }
+                // Extract just the last part of the class name for readability
+                String cleanName = rawString.contains(".") ?
+                        rawString.substring(rawString.lastIndexOf(".") + 1) : rawString;
+
+                return "During: " + StringUtils.capitalize(cleanName.replace("Requirement", "").toLowerCase());
             }
         }
+    }
+
+    private static List<String> extractConditionNames(RegistryLikeCondition<?> cond) {
+        List<String> names = new ArrayList<>();
+        if (cond == null) return names;
+        if (cond instanceof BiomeTagCondition btc) names.add(formatName(btc.getTag().location().getPath()));
+        else if (cond instanceof BiomeIdentifierCondition bic) names.add(formatName(bic.getIdentifier().getPath()));
+        else if (cond instanceof StructureTagCondition stc) names.add(formatName(stc.getTag().location().getPath()));
+        else if (cond instanceof StructureIdentifierCondition sic) names.add(formatName(sic.getIdentifier().getPath()));
+        return names;
+    }
+
+    private static String buildConditionString(String sing, String plur, List<String> allow, List<String> deny) {
+        if (!allow.isEmpty() && !deny.isEmpty()) return String.format("In %s: %s; not in %s: %s", plur, String.join(", ", allow), plur, String.join(", ", deny));
+        if (!allow.isEmpty()) return String.format("In %s: %s", plur, String.join(", ", allow));
+        if (!deny.isEmpty()) return String.format("Not in %s: %s", plur, String.join(", ", deny));
+        return "Any " + sing;
+    }
+
+    private static String formatName(String path) {
+        return (path == null) ? "Unknown" : Arrays.stream(path.split("_")).map(s -> StringUtils.capitalize(s.toLowerCase())).collect(Collectors.joining(" "));
     }
 }
