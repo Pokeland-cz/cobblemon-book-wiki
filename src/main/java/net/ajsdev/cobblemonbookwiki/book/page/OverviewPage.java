@@ -19,6 +19,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class OverviewPage {
 
@@ -33,15 +35,17 @@ public class OverviewPage {
         page.append(formatBreeding(formData, species));
         page.append(formatAbilities(formData));
 
-
         return page;
     }
 
     private static MutableComponent formatName(Species species, String fullName) {
         MutableComponent name = Component.literal(String.format("%s\n", fullName)).withStyle(ChatFormatting.BOLD);
-        if (!species.getImplemented()) name.setStyle(
-                Style.EMPTY.applyFormats(ChatFormatting.RED, ChatFormatting.BOLD)
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Not Implemented!"))));
+        if (!species.getImplemented()) {
+            name.setStyle(
+                    Style.EMPTY.applyFormats(ChatFormatting.RED, ChatFormatting.BOLD)
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Not Implemented!")))
+            );
+        }
         return name;
     }
 
@@ -101,11 +105,9 @@ public class OverviewPage {
                 hover.append(stat.getDisplayName());
                 hover.append("\n");
             }
-
         }
         if (total == 0) hover.append("- None\n");
         hover.append(" \n");
-
 
         hover.append(String.format("Catch Rate: %s\n", formData.getCatchRate()));
         hover.append(String.format("Base Friendship: %s\n", formData.getBaseFriendship()));
@@ -128,9 +130,9 @@ public class OverviewPage {
 
         hover.append("Egg Groups:\n");
         for (EggGroup eggGroup : formData.getEggGroups()) {
-            hover.append(Component.literal("- "))
-                    .append(Component.literal(eggGroup.getShowdownID()))
-                    .append(Component.literal("\n"));
+            // Fix: capitalize the raw showdown IDs
+            String groupName = StringUtils.capitalize(eggGroup.getShowdownID());
+            hover.append(Component.literal("- " + groupName + "\n"));
         }
         hover.append(" \n");
         hover.append(formatGenderRatio(formData));
@@ -156,11 +158,16 @@ public class OverviewPage {
                     .withStyle(ChatFormatting.ITALIC, ChatFormatting.DARK_GRAY));
         }
 
-        int male = (int) (formData.getMaleRatio() * 100);
-        int female = 100 - male;
+        // Fix: Use floats to prevent dropping precision on 87.5% / 12.5% ratios
+        float male = formData.getMaleRatio() * 100f;
+        float female = 100f - male;
 
-        Component femaleText = Component.literal("♀ " + female + "%").withStyle(ChatFormatting.LIGHT_PURPLE);
-        Component maleText = Component.literal("♂ " + male + "%").withStyle(ChatFormatting.BLUE);
+        // Strip the decimal if it's a whole number
+        String maleStr = (male % 1 == 0) ? String.format("%.0f%%", male) : String.format("%.1f%%", male);
+        String femaleStr = (female % 1 == 0) ? String.format("%.0f%%", female) : String.format("%.1f%%", female);
+
+        Component femaleText = Component.literal("♀ " + femaleStr).withStyle(ChatFormatting.LIGHT_PURPLE);
+        Component maleText = Component.literal("♂ " + maleStr).withStyle(ChatFormatting.BLUE);
 
         return genderRatio
                 .append(femaleText)
@@ -180,50 +187,46 @@ public class OverviewPage {
 
         List<AbilityTemplate> commonAbilities = potentialAbilities
                 .stream()
-                .filter((potentialAbility -> potentialAbility.getType() instanceof CommonAbilityType))
+                .filter(potentialAbility -> potentialAbility.getType() instanceof CommonAbilityType)
                 .map(PotentialAbility::getTemplate)
                 .toList();
 
-        List<String> commonAbilityNames = commonAbilities
+        // Fix: Change to a Set for optimized lookups
+        Set<String> commonAbilityNames = commonAbilities
                 .stream()
                 .map(AbilityTemplate::getName)
-                .toList();
+                .collect(Collectors.toSet());
 
         List<AbilityTemplate> hiddenAbilities = potentialAbilities.stream()
-                .filter((potentialAbility -> potentialAbility.getType() instanceof HiddenAbilityType))
+                .filter(potentialAbility -> potentialAbility.getType() instanceof HiddenAbilityType)
                 .map(PotentialAbility::getTemplate)
                 .filter(potentialAbility -> !commonAbilityNames.contains(potentialAbility.getName()))
                 .toList();
 
-
         for (AbilityTemplate template : commonAbilities) {
-            Component name = Component.translatable(template.getDisplayName());
-            Component description = Component.translatable(template.getDescription());
-
-            Component entry = name.copy().withStyle(style ->
-                    style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, description))
-            );
-
-            abilities.append(Component.literal("- ").withStyle())
-                    .append(entry)
-                    .append(Component.literal("\n"));
+            addAbilityEntry(abilities, template, false);
         }
 
         for (AbilityTemplate template : hiddenAbilities) {
-            Component name = Component.translatable(template.getDisplayName());
-            Component description = Component.translatable(template.getDescription());
-
-            Component entry = name.copy().withStyle(style ->
-                    style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, description))
-            );
-
-            abilities.append(Component.literal("- "))
-                    .append(Component.literal("[HA] ").withStyle(ChatFormatting.RED))
-                    .append(entry)
-                    .append(Component.literal("\n"));
+            addAbilityEntry(abilities, template, true);
         }
 
         return abilities;
     }
 
+    // Fix: Helper method to prevent repeating the hover logic
+    private static void addAbilityEntry(MutableComponent abilities, AbilityTemplate template, boolean isHidden) {
+        Component name = Component.translatable(template.getDisplayName());
+        Component description = Component.translatable(template.getDescription());
+
+        Component entry = name.copy().withStyle(style ->
+                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, description))
+        );
+
+        abilities.append(Component.literal("- "));
+        if (isHidden) {
+            abilities.append(Component.literal("[HA] ").withStyle(ChatFormatting.RED));
+        }
+        abilities.append(entry).append(Component.literal("\n"));
+    }
 }
