@@ -20,10 +20,13 @@ import net.minecraft.network.chat.*;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class EvolutionPage {
 
@@ -34,8 +37,8 @@ public class EvolutionPage {
         List<Evolution> evolutions = formData.getEvolutions().stream().toList();
         if (evolutions.isEmpty()) {
             components.add(Component.literal("This pokemon does not evolve."));
+            return components; // Fast return if empty
         }
-
 
         for (Evolution evolution : evolutions) {
             MutableComponent hover = Component.empty();
@@ -58,13 +61,15 @@ public class EvolutionPage {
                 case BlockClickEvolution bce: {
                     hover.append("Block Click Evolution\n");
                     RegistryLikeCondition<Block> cond = bce.getRequiredContext();
-                    String blockString = "unknown";
-                    if (cond instanceof BlockTagCondition btc)
-                        blockString = btc.getTag().location().getPath();
-                    if (cond instanceof BlockIdentifierCondition bic)
-                        blockString = bic.getIdentifier().getPath();
-                    MutableComponent bceComponent = Component.literal("- Interact With: " + blockString);
-                    hover.append(bceComponent);
+                    String blockString = "Unknown";
+
+                    if (cond instanceof BlockTagCondition btc) {
+                        blockString = formatName(btc.getTag().location().getPath());
+                    } else if (cond instanceof BlockIdentifierCondition bic) {
+                        blockString = formatName(bic.getIdentifier().getPath());
+                    }
+
+                    hover.append("- Interact With: ").append(blockString).append("\n");
                     break;
                 }
 
@@ -73,24 +78,21 @@ public class EvolutionPage {
                     Optional<HolderSet<Item>> items = iie.getRequiredContext().items();
 
                     if (items.isPresent()) {
-                        items.get().stream().forEach(itemHolder -> {
+                        // Fix: Standard for-loop and added a newline to prevent text smooshing
+                        for (var itemHolder : items.get()) {
                             Item item = itemHolder.value();
                             Component itemName = item.getName(new ItemStack(item));
-                            MutableComponent iieComponent = Component.literal("- Item: ").append(itemName);
-                            hover.append(iieComponent);
-                        });
+                            hover.append(Component.literal("- Item: ").append(itemName).append("\n"));
+                        }
                     } else {
-                        MutableComponent iieComponent = Component.literal("- Item: unknown");
-                        hover.append(iieComponent);
+                        hover.append("- Item: Unknown\n");
                     }
                     break;
                 }
                 default: {
                     hover.append("Unknown?\n");
                 }
-
             }
-
 
             hover.append(" \n");
             if (!evolution.getRequirements().isEmpty()) {
@@ -99,15 +101,12 @@ public class EvolutionPage {
                 for (Requirement req : evolution.getRequirements()) {
                     hover.append(Component.literal(EvolutionRequirementUtil.getReadableString(req, ra)))
                             .append("\n");
-
                 }
             }
 
             Pokemon evo = evolution.getResult().create();
             String evoName = WikiBookBuilder.getFullNameString(evo.getForm(), evo.getSpecies());
-            String name = evolution.getResult().getSpecies() == null ?
-                    "Error"
-                    : evoName;
+            String name = evolution.getResult().getSpecies() == null ? "Error" : evoName;
 
             components.add(
                     Component.literal(String.format("%s\n\n", name))
@@ -126,5 +125,15 @@ public class EvolutionPage {
                             ));
         }
         return components;
+    }
+
+    /**
+     * Helper to pretty-print raw path strings (e.g., "mossy_cobblestone" -> "Mossy Cobblestone")
+     */
+    private static String formatName(String path) {
+        if (path == null) return "Unknown";
+        return Arrays.stream(path.split("_"))
+                .map(s -> StringUtils.capitalize(s.toLowerCase()))
+                .collect(Collectors.joining(" "));
     }
 }
