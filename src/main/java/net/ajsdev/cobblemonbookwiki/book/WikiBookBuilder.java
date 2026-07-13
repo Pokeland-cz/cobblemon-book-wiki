@@ -15,7 +15,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 
-
 public class WikiBookBuilder {
 
     public static ItemStack build(FormData formData, RegistryAccess ra) {
@@ -30,6 +29,7 @@ public class WikiBookBuilder {
         addEvoPages(EvolutionPage.build(formData, ra), builder);
         SpawnDetailPage.build(formData, species).forEach(builder::addPage);
         MovesPage.build(formData).forEach(builder::addPage);
+
         return builder.asStack();
     }
 
@@ -46,13 +46,21 @@ public class WikiBookBuilder {
     }
 
     public static String getFullNameString(FormData formData, Species species) {
-        String formName = (formData.getName().equals("Normal") && formData.getAspects().isEmpty()) ?
-                null :
-                StringUtils.capitalize(formData.getAspects().getFirst());
         String speciesName = StringUtils.capitalize(species.getName());
+        String formName = null;
+
+        // 1. Check for aspects safely first
+        if (!formData.getAspects().isEmpty()) {
+            formName = StringUtils.capitalize(formData.getAspects().getFirst());
+        }
+        // 2. If no aspects, check if the form name is something other than Normal
+        else if (!formData.getName().equalsIgnoreCase("normal")) {
+            formName = StringUtils.capitalize(formData.getName());
+        }
+
+        // 3. Combine them, or just return the species name
         return formName != null ?
                 String.format("%s %s", formName, speciesName) :
                 speciesName;
     }
-
 }
