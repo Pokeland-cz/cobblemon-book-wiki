@@ -3,6 +3,7 @@ package net.ajsdev.cobblemonbookwiki.book;
 import com.cobblemon.mod.common.pokemon.FormData;
 import com.cobblemon.mod.common.pokemon.Species;
 import eu.pb4.sgui.api.elements.BookElementBuilder;
+import net.ajsdev.cobblemonbookwiki.book.page.DropsPage;
 import net.ajsdev.cobblemonbookwiki.book.page.EvolutionPage;
 import net.ajsdev.cobblemonbookwiki.book.page.MovesPage;
 import net.ajsdev.cobblemonbookwiki.book.page.OverviewPage;
@@ -29,6 +30,7 @@ public class WikiBookBuilder {
         addEvoPages(EvolutionPage.build(formData, ra), builder);
         SpawnDetailPage.build(formData, species).forEach(builder::addPage);
         MovesPage.build(formData).forEach(builder::addPage);
+        DropsPage.build(formData, species).forEach(builder::addPage);
 
         return builder.asStack();
     }
