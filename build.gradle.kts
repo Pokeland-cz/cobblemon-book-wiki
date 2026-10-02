@@ -6,11 +6,11 @@ plugins {
 }
 
 group = "net.ajsdev"
-version = "1.2.0.1-1.7.3"
+version = "1.2.0-1.8.1"
 var minecraft_version = "1.21.1"
 var loader_version = "0.17.2"
 var fabric_version = "0.116.6+1.21.1"
-var cobblemon_version = "1.7.3+1.21.1"
+var cobblemon_version = "1.8.1+1.21.1"
 
 architectury {
     platformSetupLoomIde()
@@ -39,7 +39,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${loader_version}")
     modRuntimeOnly("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
     modImplementation(fabricApi.module("fabric-command-api-v2", "${fabric_version}"))
-    modImplementation("net.fabricmc:fabric-language-kotlin:1.12.3+kotlin.2.0.21")
+    modImplementation("net.fabricmc:fabric-language-kotlin:1.13.6+kotlin.2.2.20")
     modImplementation("com.cobblemon:fabric:${cobblemon_version}")
     modImplementation("eu.pb4:sgui:1.6.1+1.21.1")
 }

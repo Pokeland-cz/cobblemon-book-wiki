@@ -74,7 +74,7 @@ public class SpawnDetailPage {
                         ))
                 );
         Component bucketComponent = Component.literal(String.format("%s ",
-                StringUtils.capitalize(sd.getBucket().getName()))).append(weightComponent);
+                StringUtils.capitalize(sd.getBucket().toLowerCase()))).append(weightComponent);
         page.append(bucketComponent);
 
         if (sd.getLevelRange() != null) {
@@ -224,7 +224,7 @@ public class SpawnDetailPage {
                 // Extracts the ResourceLocation dynamically whether it's left (ResourceLocation) or right (TagKey)
                 ResourceLocation resourceLocation = either.map(
                         resLoc -> resLoc,
-                        tagKey -> tagKey.location()
+                        TagKey::location
                 );
 
                 if (resourceLocation != null) {
