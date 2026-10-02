@@ -17,6 +17,7 @@ architectury {
     fabric()
 }
 
+@Suppress("UnstableApiUsage")
 loom {
     silentMojangMappingsLicense()
 
@@ -38,7 +39,7 @@ dependencies {
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:${loader_version}")
     modRuntimeOnly("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
-    modImplementation(fabricApi.module("fabric-command-api-v2", "${fabric_version}"))
+    modImplementation(fabricApi.module("fabric-command-api-v2", fabric_version))
     modImplementation("net.fabricmc:fabric-language-kotlin:1.13.6+kotlin.2.2.20")
     modImplementation("com.cobblemon:fabric:${cobblemon_version}")
     modImplementation("eu.pb4:sgui:1.6.1+1.21.1")
